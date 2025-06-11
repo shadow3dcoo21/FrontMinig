@@ -31,9 +31,9 @@ let subTitle = "";
 let partnersData: Partner[] = [];
 
 try {
-  const res = await fetch("http://localhost:1337/api/clients-sections?populate[section][populate]=icon");
+  const res = await fetch("http://100.42.184.197:8082/api/clients-sections?populate[section][populate]=icon");
   const json = await res.json();
-  const baseUrl = "http://localhost:1337";
+  const baseUrl = "http://100.42.184.197:8082";
   console.log("Datos recibidos de Strapi:", json);
 
   if (json.data && Array.isArray(json.data) && json.data.length > 0) {
