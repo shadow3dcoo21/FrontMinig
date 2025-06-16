@@ -1,52 +1,88 @@
 ---
 // Import necessary components and utilities
 import AvatarBlog from "@components/ui/avatars/AvatarBlog.astro";
-import { Image } from "astro:assets";
 import { formatDate } from "@utils/utils";
-import type { CollectionEntry } from "astro:content";
 
-const { blogEntry, blogLocale = "" } = Astro.props;
+// Extraemos las props
+const { blogEntry } = Astro.props;
 
+// Definimos la interfaz para TypeScript
 interface Props {
-  blogEntry: CollectionEntry<"blog">;
-  blogLocale?: string;
+  blogEntry: {
+    data: {
+      title: string;
+      pubDate: Date;
+      description: string;
+      content: string;
+      image: {
+        url: string;
+        alternativeText?: string;
+        formats?: any;
+        originalImageData?: any;
+      };
+      paragraphs: {
+        primary: Array<{id: number; Paragraph: string}>;
+        secondary: Array<{id: number; Paragraph: string}>;
+      };
+    };
+    id: string;
+    slug: string;
+  };
 }
+
+// Preparamos los datos para la página de detalles
+const detailData = {
+  title: blogEntry.data.title,
+  description: blogEntry.data.description,
+  pubDate: blogEntry.data.pubDate,
+  imageUrl: `http://100.42.184.197:8082${blogEntry.data.image.url}`,
+  paragraphs: blogEntry.data.paragraphs,
+  content: blogEntry.data.content,
+  imageFormats: blogEntry.data.image.formats,
+  originalImage: blogEntry.data.image.originalImageData
+};
 ---
 
-<!-- The following anchor tag is the main container for the card.
-     It's a link to the blog post detailed page.
-     The data-astro-prefetch is an Astro specific Dynamic HTML feature,
-     which automatically prefetches the linked page to speed up navigation. -->
+<!-- Debug: Mostrar datos que se enviarán -->
+<pre class="hidden">{
+  JSON.stringify({
+    detailData: detailData,
+    fullEntry: blogEntry
+  }, null, 2)
+}</pre>
+
+<!-- Contenedor principal de la tarjeta --> 
 <a
   class="group relative block rounded-xl outline-hidden ring-zinc-500 transition duration-500 focus-visible:ring-3 dark:ring-zinc-200 dark:focus:outline-hidden"
-  href={blogLocale && blogLocale !== "en"
-    ? `/${blogLocale}/blog/${blogEntry.id.replace(/^fr\//, "")}/`
-    : `/blog/${blogEntry.id.replace(/^en\//, "")}/`}
+  href={`/blog/${blogEntry.id}/?data=${encodeURIComponent(JSON.stringify(detailData))}`}
   data-astro-prefetch
 >
-  <!-- The container for the blog post's cover image. Uses astro:assets' Image for image source -->
+  <!-- Contenedor de la imagen -->
   <div
     class="relative h-[350px] w-full shrink-0 overflow-hidden rounded-xl before:absolute before:inset-x-0 before:z-1 before:size-full before:bg-linear-to-t before:from-neutral-900/[.7]"
   >
-    <Image
-      class="absolute start-0 top-0 size-full object-cover transition duration-500 group-hover:scale-110"
-      src={blogEntry.data.cardImage}
-      alt={blogEntry.data.cardImageAlt}
-      draggable={"false"}
-      loading={"eager"}
-      format={"avif"}
-    />
+    {blogEntry.data.image?.url ? (
+      <img
+        class="absolute start-0 top-0 size-full object-cover transition duration-500 group-hover:scale-110"
+        src={`http://100.42.184.197:8082${blogEntry.data.image.url}`}
+        alt={blogEntry.data.image.alternativeText || blogEntry.data.title}
+        draggable="false"
+        loading="eager"
+        width="800"
+        height="450"
+      />
+    ) : (
+      <div class="absolute start-0 top-0 size-full bg-gray-200 flex items-center justify-center">
+        <span class="text-gray-500">Imagen no disponible</span>
+      </div>
+    )}
   </div>
-  <!-- The container for the blog author's avatar and associated metadata (author name and publication date) -->
+  
+  <!-- Información de fecha -->
   <div class="absolute inset-x-0 top-0 z-10">
     <div class="flex h-full flex-col p-4 sm:p-6">
       <div class="flex items-center">
-        <AvatarBlog blogEntry={blogEntry} />
-
         <div class="ms-2.5 sm:ms-4">
-          <h4 class="font-bold text-neutral-50">
-            {blogEntry.data.author}
-          </h4>
           <p class="text-xs text-neutral-50/[.8]">
             {formatDate(blogEntry.data.pubDate)}
           </p>
@@ -54,7 +90,8 @@ interface Props {
       </div>
     </div>
   </div>
-  <!-- The container for the blog post's title and description -->
+  
+  <!-- Título y descripción -->
   <div class="absolute inset-x-0 bottom-0 z-10">
     <div class="flex h-full flex-col p-4 sm:p-6">
       <h3

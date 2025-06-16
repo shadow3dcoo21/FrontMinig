@@ -6,30 +6,108 @@ import CardSmall from "@components/ui/cards/CardSmall.astro";
 import CardWide from "@components/ui/cards/CardWide.astro";
 import FeaturesStatsAlt from "@components/sections/features/FeaturesStatsAlt.astro";
 import TestimonialsSectionAlt from "@components/sections/testimonials/TestimonialsSectionAlt.astro";
-
-// Importing necessary functions from Astro
-import { getCollection } from "astro:content";
-import type { CollectionEntry } from "astro:content";
 import { SITE } from "@data/constants";
 
-// Fetching all the product related content and sorting it by main.id
-const product: CollectionEntry<"products">[] = (
-  await getCollection("products", ({ id }) => {
-    return id.startsWith("en/");
-  })
-).sort(
-  (a: CollectionEntry<"products">, b: CollectionEntry<"products">) =>
-    a.data.main.id - b.data.main.id
-);
+// Definir interfaz para los productos
+interface StrapiImageFormat {
+  ext: string;
+  url: string;
+  hash: string;
+  mime: string;
+  name: string;
+  path: null;
+  size: number;
+  width: number;
+  height: number;
+  sizeInBytes: number;
+}
+
+interface StrapiImage {
+  id: number;
+  documentId: string;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  width: number;
+  height: number;
+  formats: {
+    large?: StrapiImageFormat;
+    small?: StrapiImageFormat;
+    medium?: StrapiImageFormat;
+    thumbnail?: StrapiImageFormat;
+  };
+  hash: string;
+  ext: string;
+  mime: string;
+  size: number;
+  url: string;
+  previewUrl: string | null;
+  provider: string;
+  provider_metadata: null;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+}
+
+interface DescriptionItem {
+  id: number;
+  Title: string;
+  Description: string;
+}
+
+interface BluePrintsArray {
+  id: number;
+  Image1: StrapiImage;
+  Image2: StrapiImage;
+}
+
+interface ProductArray {
+  id: number;
+  TitleDescripcion: string;
+  DescriptionGeneral: string;
+  DescriptionArray: DescriptionItem[];
+  SpecificationsArray: DescriptionItem[];
+  BluePrintsArray: BluePrintsArray;
+}
+
+interface CardsProduct {
+  id: number;
+  TitleCards: string;
+  Description: string;
+  TitleItem: string;
+  SubtitleItem: string;
+  Image: StrapiImage;
+  Array: ProductArray;
+}
+
+interface StrapiData {
+  id: number;
+  documentId: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  Title: string;
+  CardsProduct: CardsProduct[];
+}
+
+// Strapi API URL
+const STRAPI_API_URL = "http://100.42.184.197:8082/api/cards-pros?populate[CardsProduct][populate][Image]=true&populate[CardsProduct][populate][Array][populate][DescriptionArray]=true&populate[CardsProduct][populate][Array][populate][SpecificationsArray]=true&populate[CardsProduct][populate][Array][populate][BluePrintsArray][populate][Image1]=true&populate[CardsProduct][populate][Array][populate][BluePrintsArray][populate][Image2]=true";
+
+// Fetch data from Strapi
+const response = await fetch(STRAPI_API_URL);
+const strapiData = await response.json();
+
+// Extract necessary data with proper typing
+const pageData = strapiData.data[0] as StrapiData;
+const title = pageData.Title;
+const products: CardsProduct[] = pageData.CardsProduct;
 
 // Define variables for page content
-const title: string = "Products";
 const subTitle: string =
   "Explore the durability and precision of ScrewFast tools, designed for both professionals and enthusiasts. Each of our products is crafted with precision and built to last, ensuring you have the right tool for every job.";
 
-// Testimonial data that will be rendered in the component
+// Testimonial data
 const testimonials = [
-  // First testimonial data
   {
     content:
       " \"Since switching to ScrewFast's hardware tools, the efficiency on our construction sites has skyrocketed. The durability of the hex bolts and precision of the machine screws are simply unmatched. It's refreshing to work with a company that truly understands the daily demands of the industry.\" ",
@@ -39,7 +117,6 @@ const testimonials = [
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=facearea&facepad=2&w=320&h=320&q=80",
     avatarAlt: "Image Description",
   },
-  // Second testimonial data
   {
     content:
       " \"As an interior designer, I'm always looking for high-quality materials and tools that help bring my visions to life. ScrewFast's mixed screws assortment has been a game-changer for my projects, providing the perfect blend of quality and variety. The outstanding customer support was just the cherry on top!\" ",
@@ -49,7 +126,6 @@ const testimonials = [
       "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1376&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D8&auto=format&fit=facearea&facepad=2&w=320&h=320&q=80",
     avatarAlt: "Image Description",
   },
-  // Third testimonial data
   {
     content:
       " \"I've been a professional carpenter for over 15 years, and I can sincerely say that ScrewFast's tap bolts and nuts are some of the best I've used. They grip like no other, and I have full confidence in every joint and fixture. Plus, the service is impeccable – they truly care about my project's success.\" ",
@@ -109,11 +185,10 @@ const ogTitle = "Hardware Tools | ScrewFast";
       </div>
       <PrimaryCTA title="Customer Stories" url="#testimonials" noArrow={true} />
     </div>
-    {/* Displaying products in alternating styles. Alternative product gets different card styling.
-    Maps through all product entries and displays them with either CardSmall or CardWide based on their position. */}
+    {/* Displaying products */}
     <section class="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6 xl:gap-8">
       {
-        product.map((product, index) => {
+        products.map((product, index) => {
           const position = index % 4;
           if (position === 0 || position === 3) {
             return <CardSmall product={product} />;
@@ -124,6 +199,7 @@ const ogTitle = "Hardware Tools | ScrewFast";
       }
     </section>
   </div>
+
   {/* Features statistics section */}
   <FeaturesStatsAlt
     title="Why Choose ScrewFast?"
@@ -134,6 +210,7 @@ const ogTitle = "Hardware Tools | ScrewFast";
       "Customer support dedicated to your project's success.",
     ]}
   />
+  
   {/* Testimonials section */}
   <TestimonialsSectionAlt
     title="What Our Customers Say"

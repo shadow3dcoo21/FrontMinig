@@ -12,23 +12,65 @@ declare global {
   }
 }
 
-// Generate static paths
-export async function getStaticPaths() {
-  const STRAPI_API_URL = "http://100.42.184.197:8082/api/cards-pros?populate[CardsProduct][populate][Image]=true&populate[CardsProduct][populate][Array][populate][DescriptionArray]=true&populate[CardsProduct][populate][Array][populate][SpecificationsArray]=true&populate[CardsProduct][populate][Array][populate][BluePrintsArray][populate][Image1]=true&populate[CardsProduct][populate][Array][populate][BluePrintsArray][populate][Image2]=true";
-  
-  const response = await fetch(STRAPI_API_URL);
-  const strapiData = await response.json();
-  
-  const products = strapiData.data[0].CardsProduct;
-  
-  return products.map(product => ({
-    params: { id: product.id.toString() },
-    props: { product },
-  }));
+// Definimos la interfaz para el producto
+interface Product {
+  id: number;
+  TitleItem: string;
+  Description: string;
+  SubtitleItem: string;
+  Image: {
+    url: string;
+  };
+  TitleCards: string;
+  Array: {
+    TitleDescripcion: string;
+    DescriptionGeneral: string;
+    DescriptionArray: Array<{
+      Title: string;
+      Description: string;
+    }>;
+    SpecificationsArray: Array<{
+      Title: string;
+      Description: string;
+    }>;
+    BluePrintsArray: {
+      Image1?: {
+        url: string;
+      };
+      Image2?: {
+        url: string;
+      };
+    };
+  };
 }
 
-const { product } = Astro.props;
-const imageUrl = `http://100.42.184.197:8082`;
+// Generate static paths
+export async function getStaticPaths() {
+  const STRAPI_API_URL = `${import.meta.env.STRAPI_URL || 'http://100.42.184.197:8082'}/api/cards-pros?populate=deep,3`;
+  
+  try {
+    const response = await fetch(STRAPI_API_URL);
+    const strapiData = await response.json();
+    
+    // Accedemos a los productos de manera correcta
+    const products = strapiData.data?.[0]?.attributes?.CardsProduct || [];
+    
+    return products.map((product: Product) => ({
+      params: { id: product.id.toString() },
+      props: { product },
+    }));
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    return [];
+  }
+}
+
+// Tipamos las props
+interface AstroProps {
+  product: Product;
+}
+
+const { product } = Astro.props as AstroProps;
 
 // Tabs configuration
 const tabs = [
@@ -54,6 +96,7 @@ const pageTitle: string = `${product.TitleItem} | ${SITE.title}`;
 const metaDescription = product.Description;
 const ogTitle = `${product.TitleItem} | Hardware Tools | ScrewFast`;
 ---
+<!-- SECCIÓN TEMPLATE - IMPORTANTE: Astro necesita este comentario vacío entre --- y el contenido -->
 
 <MainLayout
   title={pageTitle}
@@ -99,11 +142,9 @@ const ogTitle = `${product.TitleItem} | Hardware Tools | ScrewFast`;
         </p>
       </div>
       <div>
-        
         <img
           id="fadeInMoveRight"
-          src={`${imageUrl}${product.Image.url}`}
-         
+          src={product.Image.url}
           class="w-[600px]"
           alt={product.TitleCards}
           loading="eager"
@@ -155,7 +196,7 @@ const ogTitle = `${product.TitleItem} | Hardware Tools | ScrewFast`;
 
             <div class="space-y-6 lg:space-y-10">
               {
-                product.Array.DescriptionArray.map(item => (
+                product.Array.DescriptionArray.map((item: { Title: string; Description: string }) => (
                   <div class="flex">
                     <div>
                       <h3 class="text-base font-bold text-neutral-800 sm:text-lg dark:text-neutral-200">
@@ -178,7 +219,7 @@ const ogTitle = `${product.TitleItem} | Hardware Tools | ScrewFast`;
           <div class="grid w-full grid-cols-1 gap-x-16 md:grid-cols-2">
             <div class="max-w-md space-y-6">
               {
-                product.Array.SpecificationsArray.map(spec => (
+                product.Array.SpecificationsArray.map((spec: { Title: string; Description: string }) => (
                   <div>
                     <h3 class="block font-bold text-neutral-800 dark:text-neutral-200">
                       {spec.Title}
@@ -196,176 +237,146 @@ const ogTitle = `${product.TitleItem} | Hardware Tools | ScrewFast`;
     </div>
   </div>
 
-  <div id="tabs-with-card-3" class="hidden" role="tabpanel">
-    <div class="mx-auto mb-20 flex w-full md:mb-28 2xl:w-4/5">
-      <div
-        class="relative top-12 left-12 z-10 overflow-hidden rounded-xl shadow-lg md:top-16 md:left-12 md:-ml-12 lg:ml-0"
-      >
-        {
-          product.Array.BluePrintsArray.Image1 && (
-            
-            <img
-              src={`${imageUrl}${product.Array.BluePrintsArray.Image1.url}`}
-             
-              class="h-full w-full object-cover object-center"
-              alt="Blueprint Illustration"
-            />
-          )
+
+
+  <script>
+    import { gsap } from "gsap";
+
+    type AnimationSettings = {
+      autoAlpha?: number;
+      y?: number;
+      x?: number;
+      willChange?: string;
+    };
+
+    function setElementAnimationDefaults(
+      id: string,
+      settings: AnimationSettings
+    ) {
+      gsap.set(id, settings);
+    }
+
+    setElementAnimationDefaults("#fadeText", {
+      autoAlpha: 0,
+      y: 50,
+      willChange: "transform, opacity",
+    });
+
+    setElementAnimationDefaults("#fadeInUp", {
+      autoAlpha: 0,
+      y: 50,
+      willChange: "transform, opacity",
+    });
+
+    setElementAnimationDefaults("#fadeInMoveRight", {
+      autoAlpha: 0,
+      x: 300,
+      willChange: "transform, opacity",
+    });
+
+    let timeline = gsap.timeline({ defaults: { overwrite: "auto" } });
+
+    timeline.to("#fadeText", {
+      duration: 1.5,
+      autoAlpha: 1,
+      y: 0,
+      delay: 1,
+      ease: "power2.out",
+    });
+
+    timeline.to(
+      "#fadeInUp",
+      { duration: 1.5, autoAlpha: 1, y: 0, ease: "power2.out" },
+      "-=1.2"
+    );
+
+    timeline.to(
+      "#fadeInMoveRight",
+      { duration: 1.5, autoAlpha: 1, x: 0, ease: "power2.inOut" },
+      "-=1.4"
+    );
+
+    timeline.to("#overlay", { duration: 1, autoAlpha: 0, delay: 0.2 });
+  </script>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      function setButtonInactive(btn: any, activeButton: any) {
+        if (btn !== activeButton) {
+          btn.classList.remove(
+            "active",
+            "bg-neutral-100",
+            "hover:border-transparent",
+            "dark:bg-white/[.05]"
+          );
+
+          const tabId = btn.getAttribute("data-target");
+          if (tabId) {
+            const contentElement = document.querySelector(tabId);
+            if (contentElement) {
+              contentElement.classList.add("hidden");
+            }
+          }
+
+          changeHeadingStyle(
+            btn,
+            ["text-neutral-800", "dark:text-neutral-200"],
+            ["text-orange-400", "dark:text-orange-300"]
+          );
         }
-      </div>
+      }
 
-      <div class="relative right-12 overflow-hidden rounded-xl shadow-xl">
-        {
-          product.Array.BluePrintsArray.Image2 && (
-            <img
-              src={`${imageUrl}${product.Array.BluePrintsArray.Image2.url}`}
-              
-              class="h-full w-full object-cover object-center"
-              alt="Blueprint Illustration"
-            />
-          )
-        }
-      </div>
-    </div>
-  </div>
-</MainLayout>
-
-<script>
-  import { gsap } from "gsap";
-
-  type AnimationSettings = {
-    autoAlpha?: number;
-    y?: number;
-    x?: number;
-    willChange?: string;
-  };
-
-  function setElementAnimationDefaults(
-    id: string,
-    settings: AnimationSettings
-  ) {
-    gsap.set(id, settings);
-  }
-
-  setElementAnimationDefaults("#fadeText", {
-    autoAlpha: 0,
-    y: 50,
-    willChange: "transform, opacity",
-  });
-
-  setElementAnimationDefaults("#fadeInUp", {
-    autoAlpha: 0,
-    y: 50,
-    willChange: "transform, opacity",
-  });
-
-  setElementAnimationDefaults("#fadeInMoveRight", {
-    autoAlpha: 0,
-    x: 300,
-    willChange: "transform, opacity",
-  });
-
-  let timeline = gsap.timeline({ defaults: { overwrite: "auto" } });
-
-  timeline.to("#fadeText", {
-    duration: 1.5,
-    autoAlpha: 1,
-    y: 0,
-    delay: 1,
-    ease: "power2.out",
-  });
-
-  timeline.to(
-    "#fadeInUp",
-    { duration: 1.5, autoAlpha: 1, y: 0, ease: "power2.out" },
-    "-=1.2"
-  );
-
-  timeline.to(
-    "#fadeInMoveRight",
-    { duration: 1.5, autoAlpha: 1, x: 0, ease: "power2.inOut" },
-    "-=1.4"
-  );
-
-  timeline.to("#overlay", { duration: 1, autoAlpha: 0, delay: 0.2 });
-</script>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    function setButtonInactive(btn: any, activeButton: any) {
-      if (btn !== activeButton) {
-        btn.classList.remove(
+      function activateButton(button: any) {
+        button.classList.add(
           "active",
           "bg-neutral-100",
-          "hover:border-transparent",
+          ",hover:border-transparent",
           "dark:bg-white/[.05]"
         );
 
-        const tabId = btn.getAttribute("data-target");
+        const tabId = button.getAttribute("data-target");
         if (tabId) {
-          const contentElement = document.querySelector(tabId);
-          if (contentElement) {
-            contentElement.classList.add("hidden");
+          const contentElementToShow = document.querySelector(tabId);
+          if (contentElementToShow) {
+            contentElementToShow.classList.remove("hidden");
           }
         }
 
         changeHeadingStyle(
-          btn,
-          ["text-neutral-800", "dark:text-neutral-200"],
-          ["text-orange-400", "dark:text-orange-300"]
+          button,
+          ["text-orange-400", "dark:text-orange-300"],
+          ["text-neutral-800", "dark:text-neutral-200"]
         );
       }
-    }
 
-    function activateButton(button: any) {
-      button.classList.add(
-        "active",
-        "bg-neutral-100",
-        ",hover:border-transparent",
-        "dark:bg-white/[.05]"
-      );
-
-      const tabId = button.getAttribute("data-target");
-      if (tabId) {
-        const contentElementToShow = document.querySelector(tabId);
-        if (contentElementToShow) {
-          contentElementToShow.classList.remove("hidden");
+      function changeHeadingStyle(
+        button: any,
+        addClasses: any,
+        removeClasses: any
+      ) {
+        let heading = button.querySelector("span");
+        if (heading) {
+          heading.classList.remove(...removeClasses);
+          heading.classList.add(...addClasses);
         }
       }
 
-      changeHeadingStyle(
-        button,
-        ["text-orange-400", "dark:text-orange-300"],
-        ["text-neutral-800", "dark:text-neutral-200"]
-      );
-    }
+      const tabButtons = document.querySelectorAll("[data-target]");
 
-    function changeHeadingStyle(
-      button: any,
-      addClasses: any,
-      removeClasses: any
-    ) {
-      let heading = button.querySelector("span");
-      if (heading) {
-        heading.classList.remove(...removeClasses);
-        heading.classList.add(...addClasses);
+      if (tabButtons.length > 0) {
+        changeHeadingStyle(
+          tabButtons[0],
+          ["text-orange-400", "dark:text-orange-300"],
+          []
+        );
       }
-    }
 
-    const tabButtons = document.querySelectorAll("[data-target]");
-
-    if (tabButtons.length > 0) {
-      changeHeadingStyle(
-        tabButtons[0],
-        ["text-orange-400", "dark:text-orange-300"],
-        []
-      );
-    }
-
-    tabButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        tabButtons.forEach((btn) => setButtonInactive(btn, button));
-        activateButton(button);
+      tabButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          tabButtons.forEach((btn) => setButtonInactive(btn, button));
+          activateButton(button);
+        });
       });
     });
-  });
-</script>
+  </script>
+</MainLayout>

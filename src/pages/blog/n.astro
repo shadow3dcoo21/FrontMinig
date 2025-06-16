@@ -1,0 +1,126 @@
+//index.astro
+---
+// Import necessary components, modules and types
+import MainLayout from "@/layouts/MainLayout.astro";
+import CardBlog from "@components/ui/cards/CardBlog.astro";
+import { SITE } from "@data/constants";
+
+// URL directa de la API (sin variables de entorno)
+const API_URL = "http://100.42.184.197:8082/api/news-sections?populate[Cards][populate][Image]=true&populate[Cards][populate][ParagraphCard]=true&populate[Cards][populate][ParagraphCard2]=true";
+
+// Obtener datos de Strapi con manejo de errores
+let strapiData;
+try {
+  const strapiResponse = await fetch(API_URL);
+  
+  // Verificar si la respuesta es exitosa
+  if (!strapiResponse.ok) {
+    throw new Error(`HTTP error! status: ${strapiResponse.status}`);
+  }
+  
+  strapiData = await strapiResponse.json();
+} catch (error) {
+  console.error("Fetch failed:", error);
+  // Datos de respaldo para evitar rotura del sitio
+  strapiData = {
+    data: [{
+      attributes: {
+        TitleNews: "Blog",
+        DescriptionNews: "Artículos recientes",
+        Cards: []
+      }
+    }]
+  };
+}
+
+const newsSection = strapiData.data[0];
+const cards = newsSection.attributes.Cards || [];
+
+// Mapear datos para compatibilidad
+const mappedCards = cards.map(card => {
+  // Verifica que exista la imagen
+  const imageUrl = card.Image?.data?.attributes?.url || "/placeholder.jpg";
+  
+  return {
+    id: card.id.toString(),
+    data: {
+      title: card.TitleCard || "Sin título",
+      description: card.DescriptionCard || "",
+      pubDate: card.Date ? new Date(card.Date) : new Date(),
+      cardImage: {
+        src: imageUrl,
+      },
+      cardImageAlt: card.TitleCard || "Imagen del artículo",
+      contents: [
+        ...(card.ParagraphCard?.map(p => p.Paragraph) || []),
+        ...(card.ParagraphCard2?.map(p => p.Paragraph) || [])
+      ]
+    }
+  }
+});
+
+// Usar mappedCards como otras entradas
+const mostRecentPost = mappedCards[0];
+const otherPosts = mappedCards.slice(1);
+
+// Usar datos de Strapi para títulos
+const title = newsSection.attributes.TitleNews || "Blog";
+const subTitle = newsSection.attributes.DescriptionNews || "Artículos recientes";
+
+// Define variables for page content
+const pageTitle: string = `Blog | ${SITE.title}`;
+const metaDescription =
+  "Stay up-to-date with the latest trends and developments in the construction industry with insights from ScrewFast's team of industry experts.";
+const ogTitle = "Construction Industry Blog | ScrewFast";
+---
+
+<MainLayout
+  title={pageTitle}
+  customDescription={metaDescription}
+  customOgTitle={ogTitle}
+  structuredData={{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": "https://screwfast.uk/blog",
+    url: "https://screwfast.uk/blog",
+    name: "Blog | ScrewFast",
+    description:
+      "Stay up-to-date with the latest trends and developments in the construction industry with insights from ScrewFast's team of industry experts.",
+    isPartOf: {
+      "@type": "WebSite",
+      url: "https://screwfast.uk",
+      name: "ScrewFast",
+      description:
+        "ScrewFast offers top-tier hardware tools and expert construction services to meet all your project needs.",
+    },
+    inLanguage: "en-US",
+  }}
+>
+  <section
+    class="mx-auto max-w-[85rem] space-y-8 px-4 pt-16 sm:px-6 lg:px-8 2xl:max-w-full"
+  >
+    {/* Page header */}
+    <div class="mx-auto max-w-3xl text-left sm:text-center">
+      <h1
+        class="block text-4xl font-bold tracking-tight text-balance text-neutral-800 md:text-5xl lg:text-6xl dark:text-neutral-200"
+      >
+        {title}
+      </h1>
+
+      <p
+        class="mt-4 text-lg text-pretty text-neutral-600 dark:text-neutral-400"
+      >
+        {subTitle}
+      </p>
+    </div>
+  </section>
+
+  <section
+    class="mx-auto max-w-[85rem] px-4 py-10 sm:px-6 lg:px-8 lg:py-14 2xl:max-w-full"
+  >
+    {/* Blog posts grid */}
+    <div class="grid gap-6 lg:grid-cols-2">
+      {otherPosts.map((card) => <CardBlog blogEntry={card} />)}
+    </div>
+  </section>
+</MainLayout>
